@@ -2,11 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MD2File</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <style>
         :root {
             --bg: #f8f9fa;
@@ -17,6 +18,7 @@
             --border: rgba(0, 0, 0, 0.08);
             --btn-main: #1a1a1a;
             --btn-main-text: #ffffff;
+            --accent: #007aff;
         }
 
         [data-theme="dark"] {
@@ -31,18 +33,19 @@
         }
 
         body {
-            margin: 0; font-family: -apple-system, system-ui, sans-serif;
+            margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--bg); color: var(--text);
             transition: background 0.3s, color 0.3s;
+            overflow-x: hidden;
         }
 
-        /* 桌面端保持全屏布局 */
+        /* 布局 */
         .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
 
         .sidebar {
             width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border);
             padding: 24px; display: flex; flex-direction: column; gap: 18px; flex-shrink: 0;
-            box-sizing: border-box; overflow-y: auto;
+            box-sizing: border-box; overflow-y: auto; z-index: 10;
         }
 
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -51,14 +54,17 @@
         .icon-btn { 
             background: none; border: 1px solid var(--border); border-radius: 6px; 
             cursor: pointer; padding: 6px 10px; color: var(--text); font-size: 12px;
+            transition: all 0.2s;
         }
+        .icon-btn:hover { background: rgba(0,0,0,0.05); }
 
         .control-item { display: flex; flex-direction: column; gap: 6px; }
-        label { font-size: 11px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; }
 
         select, input {
             padding: 10px; border: 1px solid var(--border); border-radius: 8px;
             font-size: 14px; outline: none; background: var(--pane-bg); color: var(--text);
+            appearance: none; -webkit-appearance: none;
         }
 
         .btn {
@@ -67,11 +73,13 @@
         }
         .btn-pdf { background: var(--btn-main); color: var(--btn-main-text); }
         .btn-img { background: transparent; border: 1px solid var(--btn-main); color: var(--text); }
+        .btn:active { transform: scale(0.98); opacity: 0.8; }
 
         .content-area { flex: 1; display: flex; padding: 15px; gap: 15px; box-sizing: border-box; }
         .pane {
             flex: 1; display: flex; flex-direction: column; background: var(--pane-bg);
             border-radius: 12px; border: 1px solid var(--border); overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
         .pane-head {
             padding: 10px 16px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border);
@@ -80,47 +88,31 @@
 
         textarea {
             flex: 1; padding: 20px; border: none; resize: none; outline: none;
-            font-family: 'Fira Code', monospace; font-size: 14px; line-height: 1.6;
-            background: transparent; color: var(--text); min-height: 200px;
+            font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 14px; line-height: 1.6;
+            background: transparent; color: var(--text);
         }
 
-        #preview { flex: 1; padding: 30px; overflow-y: auto; background: var(--pane-bg); line-height: 1.7; color: var(--text); }
+        #preview { flex: 1; padding: 35px; overflow-y: auto; background: var(--pane-bg); line-height: 1.7; color: var(--text); }
 
-        /* --- 核心手机端适配 --- */
+        /* --- 手机端适配逻辑 --- */
         @media (max-width: 850px) {
-            .app-container { 
-                flex-direction: column; 
-                height: auto; /* 允许容器随内容撑开 */
-                overflow: visible; 
-            }
+            .app-container { flex-direction: column; height: auto; overflow: visible; }
             .sidebar { 
-                width: 100%; 
-                border-right: none; 
-                border-bottom: 1px solid var(--border); 
-                padding: 15px;
-                position: sticky; /* 侧边栏吸顶，方便导出 */
-                top: 0;
-                z-index: 100;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+                width: 100%; border-right: none; border-bottom: 1px solid var(--border); 
+                padding: 15px; position: sticky; top: 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             }
-            .content-area { 
-                flex-direction: column; 
-                height: auto; 
-                padding: 10px;
-                overflow: visible;
-            }
-            .pane { 
-                flex: none; /* 取消弹性增长 */
-                height: 70vh; /* 编辑器和预览区每个占用屏幕高度的 70% */
-                min-height: 500px;
-                margin-bottom: 10px;
-            }
-            textarea, #preview { font-size: 16px; /* 解决 iOS 输入框自动放大问题 */ }
+            .content-area { flex-direction: column; height: auto; padding: 10px; overflow: visible; }
+            .pane { flex: none; height: 70vh; min-height: 500px; margin-bottom: 10px; }
+            textarea, #preview { font-size: 16px; } /* 解决 iOS 焦点放大问题 */
         }
 
-        #preview h1 { border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        #preview code { background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; }
+        /* 渲染样式定制 */
+        #preview h1 { border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-top: 0; }
+        #preview code { background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; }
         [data-theme="dark"] #preview code { background: rgba(255,255,255,0.1); }
+        #preview blockquote { border-left: 4px solid var(--border); margin: 1.5em 0; padding-left: 1em; color: var(--text-sec); font-style: italic; }
+        #preview img { max-width: 100%; border-radius: 8px; }
         .clone-hidden { position: absolute; left: -9999px; top: 0; height: auto !important; }
     </style>
 </head>
@@ -140,11 +132,13 @@
             <label id="label-pdf-size">PDF 尺寸</label>
             <select id="pdf-size" onchange="checkCustom()"></select>
             <div id="custom-pdf" style="display:none; gap:5px; margin-top:5px;">
-                <input type="number" id="pw" placeholder="W" value="210">
-                <input type="number" id="ph" placeholder="H" value="297">
+                <input type="number" id="pw" placeholder="宽mm" value="210">
+                <input type="number" id="ph" placeholder="高mm" value="297">
             </div>
             <button class="btn btn-pdf" onclick="exportPDF()" id="btn-pdf">导出 PDF</button>
         </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 5px 0;">
 
         <div class="control-item">
             <label id="label-img-size">图片 / 社媒尺寸</label>
@@ -166,12 +160,12 @@
 </div>
 
 <script>
-    // [此处代码与上一版本 JS 逻辑一致，保持中英文切换和导出功能]
     const inputEl = document.getElementById('input');
     const previewEl = document.getElementById('preview');
     const pdfSelect = document.getElementById('pdf-size');
     const imgSelect = document.getElementById('img-size');
 
+    // 完整的 i18n 配置与功能全提示
     const i18n = {
         zh: {
             pdfSize: "PDF 尺寸", exportPdf: "导出 PDF",
@@ -184,18 +178,18 @@
                 { val: "custom", text: "自定义尺寸..." }
             ],
             imgOptions: [
-                { group: "手机设备", items: [
+                { group: "手机设备宽度", items: [
                     { val: "360", text: "标准手机 (360px)" },
                     { val: "412", text: "大屏手机 (412px)" },
                     { val: "820", text: "平板 (820px)" }
                 ]},
-                { group: "社交媒体", items: [
+                { group: "社交媒体常用宽度", items: [
                     { val: "1080", text: "Instagram / 微信 (1080px)" },
                     { val: "1200", text: "X / Twitter (1200px)" },
                     { val: "1500", text: "微博 / 小红书 (1500px)" }
                 ]}
             ],
-            defaultText: "# MD2File\n\n## 欢迎使用\n手机端现已优化布局。你可以上下滑动查看编辑器和预览区。\n\n### 特性\n- **长文本支持**：编辑器区域现在会根据屏幕高度自动调整。\n- **吸顶菜单**：导出按钮在手机端始终保持在顶部，方便随时下载。"
+            defaultText: "# MD2File 使用指南\n\n这是一个纯本地运行的 Markdown 转换工具。所有操作都在您的浏览器中完成。\n\n### 🚀 核心功能提示\n1. **导出 PDF**：在左侧选择 A4 或自定义尺寸，适合打印和正式文档。\n2. **导出长图**：选择手机或社媒宽度，一键生成适合分享的高清预览图。\n3. **主题切换**：点击右上角 🌙 按钮开启暗色模式，保护视力。\n4. **多语言**：点击顶部 EN 按钮可切换全界面语言。\n5. **智能命名**：工具会自动将你的**第一行文字**作为导出的文件名。\n\n> 试着修改左侧的内容，右侧会实时显示预览效果。"
         },
         en: {
             pdfSize: "PDF SIZE", exportPdf: "Export PDF",
@@ -208,18 +202,18 @@
                 { val: "custom", text: "Custom Size..." }
             ],
             imgOptions: [
-                { group: "Phones & Tablets", items: [
+                { group: "Phone Widths", items: [
                     { val: "360", text: "Standard Mobile (360px)" },
                     { val: "412", text: "Large Mobile (412px)" },
                     { val: "820", text: "Tablet (820px)" }
                 ]},
-                { group: "Social Media", items: [
+                { group: "Social Media Widths", items: [
                     { val: "1080", text: "Instagram / WeChat (1080px)" },
                     { val: "1200", text: "X / Twitter (1200px)" },
                     { val: "1500", text: "Weibo / Red (1500px)" }
                 ]}
             ],
-            defaultText: "# MD2File\n\n## Welcome\nMobile layout optimized. You can scroll up and down between the editor and preview.\n\n### Features\n- **Better Spacing**: Longer panes for mobile writing.\n- **Sticky Header**: Export buttons are always accessible at the top."
+            defaultText: "# MD2File Guide\n\nA lightweight, local-first Markdown converter. All processing stays in your browser.\n\n### 🚀 Quick Tips\n1. **Export PDF**: Choose A4 or custom mm in the sidebar, perfect for printing.\n2. **Export Image**: Select mobile or social media widths for high-quality sharing.\n3. **Appearance**: Click the 🌙 icon at the top to toggle Dark Mode.\n4. **Language**: Click the '中文' button to switch the entire interface language.\n5. **Smart Naming**: The **first line** of your text will be used as the filename.\n\n> Try editing the text on the left to see the live preview on the right."
         }
     };
 
@@ -244,6 +238,7 @@
         const oldDefault = i18n[currentLang].defaultText;
         currentLang = currentLang === 'zh' ? 'en' : 'zh';
         const lang = i18n[currentLang];
+        
         document.getElementById('lang-btn').innerText = currentLang === 'zh' ? 'EN' : '中文';
         document.getElementById('label-pdf-size').innerText = lang.pdfSize;
         document.getElementById('btn-pdf').innerText = lang.exportPdf;
@@ -251,7 +246,10 @@
         document.getElementById('btn-img').innerText = lang.exportImg;
         document.getElementById('head-editor').innerText = lang.editor;
         document.getElementById('head-preview').innerText = lang.preview;
+        
         renderSelects();
+        
+        // 智能同步内容
         if (inputEl.value.trim() === "" || inputEl.value === oldDefault) {
             inputEl.value = lang.defaultText;
             update();
@@ -261,7 +259,8 @@
     function checkCustom() { document.getElementById('custom-pdf').style.display = pdfSelect.value === 'custom' ? 'flex' : 'none'; }
 
     function getName(ext, res) {
-        const first = inputEl.value.split('\n').find(l => l.trim()) || 'Untitled';
+        const lines = inputEl.value.split('\n');
+        const first = lines.find(l => l.trim()) || 'Untitled';
         const name = first.replace(/[#*`>]/g, '').trim().substring(0, 20).replace(/[/\\?%*:|"<>]/g, '');
         return `${name}_${res}.${ext}`;
     }
@@ -271,27 +270,50 @@
         const sel = pdfSelect.value;
         const w = sel === 'custom' ? document.getElementById('pw').value : pdfSizes[sel][0];
         const h = sel === 'custom' ? document.getElementById('ph').value : pdfSizes[sel][1];
-        const opt = { margin: 10, filename: getName('pdf', `${w}x${h}mm`), image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: [w, h], orientation: w > h ? 'l' : 'p' } };
-        html2pdf().set(opt).from(previewEl).save();
+        
+        const btn = document.getElementById('btn-pdf');
+        btn.innerText = "...";
+
+        const opt = {
+            margin: 10, filename: getName('pdf', `${w}x${h}mm`),
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: [w, h], orientation: w > h ? 'l' : 'p' }
+        };
+        
+        try {
+            await html2pdf().set(opt).from(previewEl).save();
+        } finally {
+            btn.innerText = i18n[currentLang].exportPdf;
+        }
     }
 
     async function exportImage() {
         const w = imgSelect.value;
+        const btn = document.getElementById('btn-img');
+        btn.innerText = "...";
+        
         const currentBg = getComputedStyle(document.documentElement).getPropertyValue('--pane-bg');
         const clone = previewEl.cloneNode(true);
         clone.classList.add('clone-hidden');
         clone.style.width = w + 'px';
         clone.style.background = currentBg;
         document.body.appendChild(clone);
+
         await new Promise(r => setTimeout(r, 400));
-        const canvas = await html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: currentBg.trim() });
-        const link = document.createElement('a');
-        link.download = getName('png', `${w}px`);
-        link.href = canvas.toDataURL();
-        link.click();
-        document.body.removeChild(clone);
+        try {
+            const canvas = await html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: currentBg.trim() });
+            const link = document.createElement('a');
+            link.download = getName('png', `${w}px`);
+            link.href = canvas.toDataURL();
+            link.click();
+        } finally {
+            document.body.removeChild(clone);
+            btn.innerText = i18n[currentLang].exportImg;
+        }
     }
 
+    // 初始化
     renderSelects();
     inputEl.value = i18n.zh.defaultText;
     update();
