@@ -36,6 +36,7 @@
             transition: background 0.3s, color 0.3s;
         }
 
+        /* 桌面端保持全屏布局 */
         .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
 
         .sidebar {
@@ -49,7 +50,7 @@
         .top-tools { display: flex; gap: 8px; }
         .icon-btn { 
             background: none; border: 1px solid var(--border); border-radius: 6px; 
-            cursor: pointer; padding: 4px 8px; color: var(--text); font-size: 12px;
+            cursor: pointer; padding: 6px 10px; color: var(--text); font-size: 12px;
         }
 
         .control-item { display: flex; flex-direction: column; gap: 6px; }
@@ -80,16 +81,41 @@
         textarea {
             flex: 1; padding: 20px; border: none; resize: none; outline: none;
             font-family: 'Fira Code', monospace; font-size: 14px; line-height: 1.6;
-            background: transparent; color: var(--text);
+            background: transparent; color: var(--text); min-height: 200px;
         }
 
-        #preview { flex: 1; padding: 35px; overflow-y: auto; background: var(--pane-bg); line-height: 1.7; color: var(--text); }
+        #preview { flex: 1; padding: 30px; overflow-y: auto; background: var(--pane-bg); line-height: 1.7; color: var(--text); }
 
+        /* --- 核心手机端适配 --- */
         @media (max-width: 850px) {
-            .app-container { flex-direction: column; height: auto; overflow: visible; }
-            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
-            .content-area { flex-direction: column; height: auto; padding: 10px; }
-            .pane { height: 450px; }
+            .app-container { 
+                flex-direction: column; 
+                height: auto; /* 允许容器随内容撑开 */
+                overflow: visible; 
+            }
+            .sidebar { 
+                width: 100%; 
+                border-right: none; 
+                border-bottom: 1px solid var(--border); 
+                padding: 15px;
+                position: sticky; /* 侧边栏吸顶，方便导出 */
+                top: 0;
+                z-index: 100;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            }
+            .content-area { 
+                flex-direction: column; 
+                height: auto; 
+                padding: 10px;
+                overflow: visible;
+            }
+            .pane { 
+                flex: none; /* 取消弹性增长 */
+                height: 70vh; /* 编辑器和预览区每个占用屏幕高度的 70% */
+                min-height: 500px;
+                margin-bottom: 10px;
+            }
+            textarea, #preview { font-size: 16px; /* 解决 iOS 输入框自动放大问题 */ }
         }
 
         #preview h1 { border-bottom: 2px solid var(--border); padding-bottom: 10px; }
@@ -120,8 +146,6 @@
             <button class="btn btn-pdf" onclick="exportPDF()" id="btn-pdf">导出 PDF</button>
         </div>
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 5px 0;">
-
         <div class="control-item">
             <label id="label-img-size">图片 / 社媒尺寸</label>
             <select id="img-size"></select>
@@ -142,6 +166,7 @@
 </div>
 
 <script>
+    // [此处代码与上一版本 JS 逻辑一致，保持中英文切换和导出功能]
     const inputEl = document.getElementById('input');
     const previewEl = document.getElementById('preview');
     const pdfSelect = document.getElementById('pdf-size');
@@ -160,9 +185,9 @@
             ],
             imgOptions: [
                 { group: "手机设备", items: [
-                    { val: "360", text: "标准手机宽度 (360px)" },
-                    { val: "412", text: "大屏手机宽度 (412px)" },
-                    { val: "820", text: "平板宽度 (820px)" }
+                    { val: "360", text: "标准手机 (360px)" },
+                    { val: "412", text: "大屏手机 (412px)" },
+                    { val: "820", text: "平板 (820px)" }
                 ]},
                 { group: "社交媒体", items: [
                     { val: "1080", text: "Instagram / 微信 (1080px)" },
@@ -170,7 +195,7 @@
                     { val: "1500", text: "微博 / 小红书 (1500px)" }
                 ]}
             ],
-            defaultText: "# MD2File\n\n## 欢迎使用\n这是一个支持多端适配、暗色模式的 Markdown 导出工具。\n\n### 特性\n- **中英文切换**：支持菜单与内容的智能翻译。\n- **暗色模式**：点击上方月亮图标切换主题。\n- **智能命名**：自动抓取首行标题作为文件名。"
+            defaultText: "# MD2File\n\n## 欢迎使用\n手机端现已优化布局。你可以上下滑动查看编辑器和预览区。\n\n### 特性\n- **长文本支持**：编辑器区域现在会根据屏幕高度自动调整。\n- **吸顶菜单**：导出按钮在手机端始终保持在顶部，方便随时下载。"
         },
         en: {
             pdfSize: "PDF SIZE", exportPdf: "Export PDF",
@@ -194,7 +219,7 @@
                     { val: "1500", text: "Weibo / Red (1500px)" }
                 ]}
             ],
-            defaultText: "# MD2File\n\n## Welcome\nThis is a lightweight Markdown exporter with dark mode and responsive design.\n\n### Features\n- **Bilingual**: Menu and content switch intelligently.\n- **Dark Mode**: Toggle theme via the moon icon.\n- **Smart Naming**: Filename is auto-generated from the first line."
+            defaultText: "# MD2File\n\n## Welcome\nMobile layout optimized. You can scroll up and down between the editor and preview.\n\n### Features\n- **Better Spacing**: Longer panes for mobile writing.\n- **Sticky Header**: Export buttons are always accessible at the top."
         }
     };
 
@@ -211,22 +236,14 @@
 
     function renderSelects() {
         const lang = i18n[currentLang];
-        // PDF Select
         pdfSelect.innerHTML = lang.pdfOptions.map(o => `<option value="${o.val}">${o.text}</option>`).join('');
-        // Img Select
-        imgSelect.innerHTML = lang.imgOptions.map(g => `
-            <optgroup label="${g.group}">
-                ${g.items.map(i => `<option value="${i.val}">${i.text}</option>`).join('')}
-            </optgroup>
-        `).join('');
+        imgSelect.innerHTML = lang.imgOptions.map(g => `<optgroup label="${g.group}">${g.items.map(i => `<option value="${i.val}">${i.text}</option>`).join('')}</optgroup>`).join('');
     }
 
     function toggleLang() {
         const oldDefault = i18n[currentLang].defaultText;
         currentLang = currentLang === 'zh' ? 'en' : 'zh';
         const lang = i18n[currentLang];
-        
-        // 更新 UI 文字
         document.getElementById('lang-btn').innerText = currentLang === 'zh' ? 'EN' : '中文';
         document.getElementById('label-pdf-size').innerText = lang.pdfSize;
         document.getElementById('btn-pdf').innerText = lang.exportPdf;
@@ -234,20 +251,14 @@
         document.getElementById('btn-img').innerText = lang.exportImg;
         document.getElementById('head-editor').innerText = lang.editor;
         document.getElementById('head-preview').innerText = lang.preview;
-        
-        // 更新下拉菜单
         renderSelects();
-        
-        // 智能更新编辑器内容
         if (inputEl.value.trim() === "" || inputEl.value === oldDefault) {
             inputEl.value = lang.defaultText;
             update();
         }
     }
 
-    function checkCustom() {
-        document.getElementById('custom-pdf').style.display = pdfSelect.value === 'custom' ? 'flex' : 'none';
-    }
+    function checkCustom() { document.getElementById('custom-pdf').style.display = pdfSelect.value === 'custom' ? 'flex' : 'none'; }
 
     function getName(ext, res) {
         const first = inputEl.value.split('\n').find(l => l.trim()) || 'Untitled';
@@ -260,30 +271,20 @@
         const sel = pdfSelect.value;
         const w = sel === 'custom' ? document.getElementById('pw').value : pdfSizes[sel][0];
         const h = sel === 'custom' ? document.getElementById('ph').value : pdfSizes[sel][1];
-        
-        const opt = {
-            margin: 10, filename: getName('pdf', `${w}x${h}mm`),
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'mm', format: [w, h], orientation: w > h ? 'l' : 'p' }
-        };
+        const opt = { margin: 10, filename: getName('pdf', `${w}x${h}mm`), image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: [w, h], orientation: w > h ? 'l' : 'p' } };
         html2pdf().set(opt).from(previewEl).save();
     }
 
     async function exportImage() {
         const w = imgSelect.value;
-        const btn = document.getElementById('btn-img');
         const currentBg = getComputedStyle(document.documentElement).getPropertyValue('--pane-bg');
-        
         const clone = previewEl.cloneNode(true);
         clone.classList.add('clone-hidden');
         clone.style.width = w + 'px';
         clone.style.background = currentBg;
         document.body.appendChild(clone);
-
         await new Promise(r => setTimeout(r, 400));
         const canvas = await html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: currentBg.trim() });
-        
         const link = document.createElement('a');
         link.download = getName('png', `${w}px`);
         link.href = canvas.toDataURL();
@@ -291,7 +292,6 @@
         document.body.removeChild(clone);
     }
 
-    // 初始化
     renderSelects();
     inputEl.value = i18n.zh.defaultText;
     update();
